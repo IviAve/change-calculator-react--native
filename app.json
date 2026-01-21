@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "changeCalculator",
+    "name": "Калкулатор за ресто",
     "slug": "change-calculator-react-native",
-    "version": "1.0.0",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "changecalculatorreactnative",
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "package": "com.ivi.changecalculator",
-      "versionCode": 1,
+      "versionCode": 5,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
