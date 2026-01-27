@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Linking, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 
 const RATE = 1.95583;
@@ -16,6 +16,19 @@ export default function ChangeCalculator() {
 
   const abortRef = useRef<number | null>(null);
 
+  const systemScheme = useColorScheme(); // 'light' | 'dark'
+const [theme, setTheme] = useState<'light' | 'dark'>(systemScheme || 'light');
+
+const themeColors = colors[theme];
+
+const [error, setError] = useState('');
+
+
+useEffect(() => {
+  setTheme(systemScheme || 'light');
+}, [systemScheme]);
+
+
   useEffect(() => {
     if (abortRef.current !== null) clearTimeout(abortRef.current);
 
@@ -30,10 +43,27 @@ export default function ChangeCalculator() {
           ? Number(paid || 0)
           : Number(paid || 0) * RATE;
 
+      // const change = paidInBGN - dueInBGN;
+
+      // setChangeBGN(change > 0 ? change.toFixed(2) : '0.00');
+      // setChangeEUR(change > 0 ? (change / RATE).toFixed(2) : '0.00');
+
+      
       const change = paidInBGN - dueInBGN;
 
-      setChangeBGN(change > 0 ? change.toFixed(2) : '0.00');
-      setChangeEUR(change > 0 ? (change / RATE).toFixed(2) : '0.00');
+      if (change < 0) {
+        setError('Платената сума е по-малка от дължимата');
+        const missing = Math.abs(change);
+  setChangeBGN(missing.toFixed(2));
+  setChangeEUR((missing / RATE).toFixed(2));
+      } else {
+        setError('');
+      }
+      
+      setChangeBGN(change.toFixed(2));
+      setChangeEUR((change / RATE).toFixed(2));
+      
+      
     }, 200);
 
     return () => {
@@ -51,8 +81,18 @@ export default function ChangeCalculator() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Калкулатор за ресто</Text>
+    <View style={[styles.container, { backgroundColor:themeColors.text}]}>
+      <Text style={[styles.title, { color: themeColors.bg}]}>Калкулатор за ресто</Text>
+
+      <TouchableOpacity
+  onPress={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+  style={{ alignSelf: 'center', marginBottom: 12 }}
+>
+  <Text style={{ color: themeColors.primary }}>
+    {theme === 'light' ? '🌙 Тъмна тема' : '☀️ Светла тема'}
+  </Text>
+</TouchableOpacity>
+
 
       {/* Дължима валута */}
       <View style={styles.toggleContainer}>
@@ -76,6 +116,7 @@ export default function ChangeCalculator() {
       <View style={styles.inputGroup}>
         <Text>Дължима сума ({currency})</Text>
         <TextInput
+        
           style={styles.input}
           keyboardType="numeric"
           value={currency === 'BGN' ? dueBGN : dueEUR}
@@ -88,7 +129,12 @@ export default function ChangeCalculator() {
               setDueBGN(text ? (Number(text) * RATE).toFixed(2) : '');
             }
           }}
+          
         />
+        <Text style={{ color: themeColors.secondary, fontSize: 12, marginTop: 4 }}>
+  Моля, въведете сумата, която дължите
+</Text>
+
       </View>
 
       {/* Платежна валута */}
@@ -115,12 +161,21 @@ export default function ChangeCalculator() {
           keyboardType="numeric"
           value={paid}
           onChangeText={setPaid}
+          
         />
+        {error ? (
+            <Text style={{ color: themeColors.error, marginTop: 4 }}>
+              {error}
+            </Text>
+          ) : null}
       </View>
 
       {/* Ресто */}
       <View style={styles.result}>
-      <Text style={styles.resultTitle}>Ресто</Text>
+      <Text style={[
+    styles.resultMain,
+    { color: error ? themeColors.error : themeColors.primary },
+  ]}> { error ? 'Липсваща сума' : 'Ресто' }</Text>
         {paymentCurrency === 'BGN' ? (
           <>
             <Text style={styles.resultMain}>{changeBGN} BGN</Text>
@@ -161,7 +216,7 @@ function AppFooter() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: 'center', backgroundColor: '#f3f4f6' },
+  container: { flex: 1, padding: 20, justifyContent: 'center', },
   title: { fontSize: 22, fontWeight: '600', marginBottom: 20, textAlign: 'center' },
   resultTitle: {
     fontSize: 18,
@@ -203,3 +258,26 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 12, color: '#6b7280' },
   footerLink: { marginTop: 4, fontSize: 12, color: '#06b6d4' },
 });
+
+
+
+const colors = {
+  light: {
+    bg: '#f3f4f6',
+    card: '#ffffff',
+    text: '#111',
+    primary: '#06b6d4',
+    secondary: '#6b7280',
+    inputBorder: '#d1d5db',
+    error: '#dc2626',
+  },
+  dark: {
+    bg: '#0f172a',
+    card: '#1e293b',
+    text: '#f8fafc',
+    primary: '#38bdf8',
+    secondary: '#94a3b8',
+    inputBorder: '#334155',
+    error: '#f87171',
+  },
+};
