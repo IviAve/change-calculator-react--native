@@ -81,8 +81,8 @@ useEffect(() => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor:themeColors.text}]}>
-      <Text style={[styles.title, { color: themeColors.bg}]}>Калкулатор за ресто</Text>
+    <View style={[styles.container, { backgroundColor:themeColors.bg}]}>
+      <Text style={[styles.title, { color: themeColors.text}]}>Калкулатор за ресто</Text>
 
       <TouchableOpacity
   onPress={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -114,10 +114,13 @@ useEffect(() => {
 
       {/* Дължима сума */}
       <View style={styles.inputGroup}>
-        <Text>Дължима сума ({currency})</Text>
+      <Text style={{ color: themeColors.text,marginBottom:4 }}>
+  Дължима сума ({currency})
+</Text>
+
         <TextInput
         
-          style={styles.input}
+          style={[styles.input,{backgroundColor: themeColors.card, color: themeColors.text, borderColor: themeColors.inputBorder,},]}
           keyboardType="numeric"
           value={currency === 'BGN' ? dueBGN : dueEUR}
           onChangeText={text => {
@@ -155,9 +158,11 @@ useEffect(() => {
 
       {/* Платена сума */}
       <View style={styles.inputGroup}>
-        <Text>Платена сума ({paymentCurrency})</Text>
+      
+
+        <Text style={{ color: themeColors.text,marginBottom:4 }}>Платена сума ({paymentCurrency})</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input,{backgroundColor:themeColors.card,color:themeColors.text,borderColor: themeColors.inputBorder,},]}
           keyboardType="numeric"
           value={paid}
           onChangeText={setPaid}
