@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 
+const DEFAULT_RATE = 1.95583;
+const NUMBER_REGEX = /^\d*([.,]\d*)?$/;
 
-const RATE = 1.95583;
+const toCents = (value: number) => Math.round(value * 100);
+const fromCents = (cents: number) => (cents / 100).toFixed(2);
+
 
 export default function ChangeCalculator() {
   const [dueBGN, setDueBGN] = useState('');
@@ -11,15 +15,26 @@ export default function ChangeCalculator() {
   const [changeBGN, setChangeBGN] = useState('0.00');
   const [changeEUR, setChangeEUR] = useState('0.00');
 
+  const [rate, setRate] = useState(String(DEFAULT_RATE));
+
+
   const [currency, setCurrency] = useState<'BGN' | 'EUR'>('BGN'); // дължима
   const [paymentCurrency, setPaymentCurrency] = useState<'BGN' | 'EUR'>('BGN'); // плащане
 
   const abortRef = useRef<number | null>(null);
 
+  
+
   const systemScheme = useColorScheme(); // 'light' | 'dark'
 const [theme, setTheme] = useState<'light' | 'dark'>(systemScheme || 'light');
 
 const themeColors = colors[theme];
+
+// const numericRate = Number(rate) || DEFAULT_RATE;
+
+const numericRate =
+  rate.trim() === '' ? DEFAULT_RATE : Number(rate);
+
 
 const [error, setError] = useState('');
 
@@ -34,14 +49,22 @@ useEffect(() => {
 
     abortRef.current = setTimeout(() => {
       const dueInBGN =
-        currency === 'BGN'
-          ? Number(dueBGN || 0)
-          : Number(dueEUR || 0) * RATE;
+      currency === 'BGN'
+        ? Number(dueBGN || 0)
+        : Number(dueEUR || 0) * numericRate;
+    
+    const paidInBGN =
+      paymentCurrency === 'BGN'
+        ? Number(paid || 0)
+        : Number(paid || 0) * numericRate;
+    
+    // работим в стотинки
+    const dueCents = toCents(dueInBGN);
+    const paidCents = toCents(paidInBGN);
+    
+    const changeCents = paidCents - dueCents;
 
-      const paidInBGN =
-        paymentCurrency === 'BGN'
-          ? Number(paid || 0)
-          : Number(paid || 0) * RATE;
+    //const safeChangeCents = Math.abs(changeCents) < 1 ? 0 : changeCents;
 
       // const change = paidInBGN - dueInBGN;
 
@@ -49,19 +72,21 @@ useEffect(() => {
       // setChangeEUR(change > 0 ? (change / RATE).toFixed(2) : '0.00');
 
       
-      const change = paidInBGN - dueInBGN;
+      //const change = paidInBGN - dueInBGN;
 
-      if (change < 0) {
+      if (changeCents < 0) {
         setError('Платената сума е по-малка от дължимата');
-        const missing = Math.abs(change);
-  setChangeBGN(missing.toFixed(2));
-  setChangeEUR((missing / RATE).toFixed(2));
+      
+        const missing = Math.abs(changeCents);
+      
+        setChangeBGN(fromCents(missing));
+        setChangeEUR((missing / 100 / numericRate).toFixed(2));
       } else {
         setError('');
-      }
       
-      setChangeBGN(change.toFixed(2));
-      setChangeEUR((change / RATE).toFixed(2));
+        setChangeBGN(fromCents(changeCents));
+        setChangeEUR((changeCents / 100 / numericRate).toFixed(2));
+      }
       
       
     }, 200);
@@ -69,7 +94,7 @@ useEffect(() => {
     return () => {
       if (abortRef.current !== null) clearTimeout(abortRef.current);
     };
-  }, [dueBGN, dueEUR, paid, currency, paymentCurrency]);
+  }, [dueBGN, dueEUR, paid, currency, paymentCurrency,rate]);
 
   const handleClear = () => {
     if (abortRef.current !== null) clearTimeout(abortRef.current);
@@ -78,10 +103,31 @@ useEffect(() => {
     setPaid('');
     setChangeBGN('0.00');
     setChangeEUR('0.00');
+    setRate(String(DEFAULT_RATE));
+    setError('');
   };
+
+  // const handleNumericInput = (
+  //   value: string,
+  //   setter: (v: string) => void
+  // ) => {
+  //   if (value === '' || NUMBER_REGEX.test(value)) {
+  //     setError('');
+  //     setter(value.replace(',', '.')); // уеднаквяваме , -> .
+  //   } else {
+  //     setError('Моля, въведете валидно число');
+  //   }
+  // };
+  
 
   return (
     <View style={[styles.container, { backgroundColor:themeColors.bg}]}>
+    <ScrollView
+    contentContainerStyle={styles.scrollContainer}
+    showsVerticalScrollIndicator={false}
+    keyboardShouldPersistTaps="handled"
+    keyboardDismissMode="on-drag"
+  >
       <Text style={[styles.title, { color: themeColors.text}]}>Калкулатор за ресто</Text>
 
       <TouchableOpacity
@@ -92,6 +138,9 @@ useEffect(() => {
     {theme === 'light' ? '🌙 Тъмна тема' : '☀️ Светла тема'}
   </Text>
 </TouchableOpacity>
+
+
+
 
 
       {/* Дължима валута */}
@@ -124,14 +173,23 @@ useEffect(() => {
           keyboardType="numeric"
           value={currency === 'BGN' ? dueBGN : dueEUR}
           onChangeText={text => {
+            if (!NUMBER_REGEX.test(text) && text !== '') {
+              setError('Позволени са само числа и една точка или запетайка');
+              return;
+            }
+          
+            const normalized = text.replace(',', '.');
+            setError('');
+          
             if (currency === 'BGN') {
-              setDueBGN(text);
-              setDueEUR(text ? (Number(text) / RATE).toFixed(2) : '');
+              setDueBGN(normalized);
+              setDueEUR(normalized ? (Number(normalized) / numericRate).toFixed(2) : '');
             } else {
-              setDueEUR(text);
-              setDueBGN(text ? (Number(text) * RATE).toFixed(2) : '');
+              setDueEUR(normalized);
+              setDueBGN(normalized ? (Number(normalized) * numericRate).toFixed(2) : '');
             }
           }}
+          
           
         />
         <Text style={{ color: themeColors.secondary, fontSize: 12, marginTop: 4 }}>
@@ -139,6 +197,8 @@ useEffect(() => {
 </Text>
 
       </View>
+
+
 
       {/* Платежна валута */}
       <View style={styles.toggleContainer}>
@@ -165,7 +225,15 @@ useEffect(() => {
           style={[styles.input,{backgroundColor:themeColors.card,color:themeColors.text,borderColor: themeColors.inputBorder,},]}
           keyboardType="numeric"
           value={paid}
-          onChangeText={setPaid}
+          onChangeText={text => {
+            if (text === '' || NUMBER_REGEX.test(text)) {
+              setError('');
+              setPaid(text.replace(',', '.'));
+            } else {
+              setError('Позволени са само числа и една точка или запетайка');
+            }
+          }}
+          
           
         />
         {error ? (
@@ -198,8 +266,48 @@ useEffect(() => {
         <Text style={styles.clearText}>Clear</Text>
       </TouchableOpacity>
 
+      {/* Курс */}
+<View style={styles.rateWrapper}>
+  <Text style={{ color: themeColors.text, marginBottom: 4 }}>
+     1EUR
+  </Text>
+
+  <TextInput
+    style={[
+      styles.input,
+      {
+        backgroundColor: themeColors.card,
+        color: themeColors.text,
+        borderColor: themeColors.inputBorder,
+      },
+    ]}
+    keyboardType="numeric"
+    value={rate}
+    onChangeText={text => {
+      if (text === '' || NUMBER_REGEX.test(text)) {
+        setError('');
+        setRate(text.replace(',', '.'));
+      } else {
+        setError('Курсът трябва да е число');
+      }
+    }}
+    onBlur={() => {
+      if (!rate) setRate(String(DEFAULT_RATE));
+    }}
+  />
+
+  <Text style={{ color: themeColors.secondary, fontSize: 12 }}>
+     BGN {DEFAULT_RATE}
+  </Text>
+ 
+</View>
+
       <AppFooter />
+      </ScrollView>
     </View>
+
+
+
   );
 }
 
@@ -228,6 +336,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 6,
     textAlign: 'center',
+  },
+  
+  // rateWrapper: {
+  //   alignSelf: 'center',   
+  //   marginBottom: 10,
+  // },
+  
+
+  rateWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+
+  rateInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    minWidth: 110,         // да не стане много тясно
+    textAlign: 'center',   // числото да стои красиво
   },
   
   toggleContainer: { flexDirection: 'row', marginBottom: 12 },
@@ -259,9 +390,15 @@ const styles = StyleSheet.create({
   clearBtn: { padding: 12, backgroundColor: '#06b6d4', borderRadius: 8 },
   clearText: { color: '#fff', fontWeight: '600', textAlign: 'center' },
 
-  footer: { marginTop: 24, alignItems: 'center' },
+  footer: { marginTop: 24, alignItems: 'center' ,paddingBottom: 30},
   footerText: { fontSize: 12, color: '#6b7280' },
   footerLink: { marginTop: 4, fontSize: 12, color: '#06b6d4' },
+  scrollContainer: {
+    flexGrow: 1,           
+    justifyContent: 'center', 
+    paddingTop: 40,
+    paddingBottom: 30,     
+  },
 });
 
 
@@ -285,4 +422,7 @@ const colors = {
     inputBorder: '#334155',
     error: '#f87171',
   },
+ 
+  
 };
+

@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, StyleSheet } from 'react-native';
-import ChangeCalculator from '../../components/chageCalculator';
+import ChangeCalculator from '../components/chageCalculator';
 
 export default function App() {
   return (
